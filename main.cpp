@@ -76,9 +76,7 @@ void display()
 
 void idle()
 {
-  // peux-tu à chaque fois générer un nombre entre 6 et -6, et l'ajouter à r, en faisant en sorte qu'il ne soit pas en dessous de 0 ou au dessus de 360
-  r >= 360.0f ? r = 0.0f : r += (rand() % 37) - 18;
-  // r >= 360.0f ? r = 0.0f : r += 6.0f;
+  r >= 360.0f ? r = 0.0f : r += 6.0f;
   glutPostRedisplay();
 }
 
