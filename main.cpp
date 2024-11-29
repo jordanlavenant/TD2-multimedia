@@ -32,9 +32,11 @@ glm::mat4 view;
 glm::mat4 proj;
 glm::mat4 mvp;
 
+// Angle de rotation.
+float r = 0.0f;
+
 // Identifiant des tableaux passés à la carte graphique.
 unsigned int vaoids[ 1 ];
-
 
 /**
  * Fonction d'affichage.
@@ -44,24 +46,41 @@ void display()
   std::cout << "display\n";
 
   // Nettoyage du buffer d'affichage par la couleur par défaut.
-  glClear( GL_COLOR_BUFFER_BIT );
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // L'origine du repère est déplacée à -5 suivant l'axe z.
-  view = glm::translate( glm::mat4( 1.0f ) , glm::vec3( 0.0f, 0.0f, -5.0f ) );
+  // Activer le test de profondeur
+  glEnable(GL_DEPTH_TEST);
 
-  // Calcul de la matrice mvp.
+  // --Premier cube--
+
+  view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+  view = glm::rotate(view, glm::radians(r), glm::vec3(1.0f, 1.0f, 1.0f));
   mvp = proj * view;
+  glUniformMatrix4fv(mvpid, 1, GL_FALSE, &mvp[0][0]);
+  glBindVertexArray(vaoids[0]);
+  glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
 
-  // Passage de la matrice mvp au shader (envoi vers la carte graphique).
-  glUniformMatrix4fv( mvpid , 1, GL_FALSE, &mvp[0][0]);
+  // --Deuxième cube--
 
-  // Dessin de 1 triangle à partir de 3 indices.
-  glBindVertexArray( vaoids[ 0 ] );
-  glDrawElements( GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0 );
+  view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+  view = glm::rotate(view, glm::radians(r), glm::vec3(0.0f, 1.0f, 0.0f));
+  view = glm::translate(view, glm::vec3(2.0f, 0.0f, 0.0f));
+  view = glm::scale(view, glm::vec3(0.5f, 0.5f, 0.5f));
+  mvp = proj * view;
+  glUniformMatrix4fv(mvpid, 1, GL_FALSE, &mvp[0][0]);
+  glBindVertexArray(vaoids[0]);
+  glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
 
   glutSwapBuffers();
 }
 
+void idle()
+{
+  // peux-tu à chaque fois générer un nombre entre 6 et -6, et l'ajouter à r, en faisant en sorte qu'il ne soit pas en dessous de 0 ou au dessus de 360
+  r >= 360.0f ? r = 0.0f : r += (rand() % 37) - 18;
+  // r >= 360.0f ? r = 0.0f : r += 6.0f;
+  glutPostRedisplay();
+}
 
 /**
  * Fonction appelée à chaque redimensionnement de la fenêtre.
@@ -86,23 +105,52 @@ void initVAOs()
   unsigned int vboids[ 3 ];
 
   // Points du maillage.
-  std::vector< float > vertices = {
-    -0.5f,  0.0f,  0.0f,
-     0.0f,  0.5f,  0.0f,
-     0.5f,  0.0f,  0.0f
-  };
+  std::vector<float> vertices = {
+      -0.5f, -0.5f, 0.5f,
+      -0.5f, 0.5f, 0.5f,
+      0.5f, 0.5f, 0.5f,
+      0.5f, -0.5f, 0.5f,
+      -0.5f, -0.5f, -0.5f,
+      -0.5f, 0.5f, -0.5f,
+      0.5f, 0.5f, -0.5f,
+      0.5f, -0.5f, -0.5f};
 
   // Couleurs du maillage.
-  std::vector< float > colors = {
-    1.0f, 0.0f, 0.0f,
-    1.0f, 1.0f, 0.0f,
-    0.0f, 1.0f, 1.0f
-  };
+  std::vector<float> colors = {
+      1.0f, 0.0f, 0.0f,
+      1.0f, 1.0f, 0.0f,
+      0.0f, 1.0f, 1.0f,
+      0.0f, 0.0f, 1.0f,
+      1.0f, 0.0f, 0.0f,
+      1.0f, 1.0f, 0.0f,
+      0.0f, 1.0f, 1.0f,
+      0.0f, 0.0f, 1.0f};
 
   // Indices du maillage.
-  std::vector< unsigned short > indices = {
-    0, 1, 2
-  };
+  std::vector<unsigned short> indices = {
+      // Front face
+      0, 1, 2,
+      2, 3, 0,
+
+      // Back face
+      4, 5, 6,
+      6, 7, 4,
+
+      // Top face
+      1, 5, 6,
+      6, 2, 1,
+
+      // Bottom face
+      0, 4, 7,
+      7, 3, 0,
+
+      // Left face
+      0, 1, 5,
+      5, 4, 0,
+
+      // Right face
+      3, 2, 6,
+      6, 7, 3};
 
   // Génération d'un Vertex Array Object (VAO) contenant 3 Vertex Buffer Objects.
   glGenVertexArrays( 1, &vaoids[ 0 ] );
@@ -202,15 +250,16 @@ int main( int argc, char * argv[] )
 { //glewInit();
   // Initialisation de l'affichage.
   glutInit( &argc, argv );
+  glutIdleFunc(idle);
 
-  #if defined(__APPLE__) && defined(ENABLE_SHADERS)
-      glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA|GLUT_3_2_CORE_PROFILE);
-  #else
-      glutInitContextVersion( 3, 2 );
-      //glutInitContextVersion( 4, 5 );
-      glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-      glewInit();
-  #endif
+#if defined(__APPLE__) && defined(ENABLE_SHADERS)
+  glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA | GLUT_3_2_CORE_PROFILE);
+#else
+  glutInitContextVersion(3, 2);
+  // glutInitContextVersion( 4, 5 );
+  glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+  glewInit();
+#endif
   //
 
   glutInitWindowSize( 640, 480 );
